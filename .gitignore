@@ -19,3 +19,12 @@ CLAUDE.md
 
 # Local configuration files
 mcp-config.json
+
+# Images and media
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.svg
+*.mp4

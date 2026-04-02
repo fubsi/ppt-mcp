@@ -38,3 +38,29 @@ class PresentationFile:
 
     def get_slides(self):
         return self.pptx_object.slides
+
+class Pictogram:
+    def __init__(self, name: str, image_path: str):
+        self.name = name
+        self.image_path = image_path
+
+    def to_dict(self) -> Dict:
+        return {
+            "name": self.name
+        }
+
+class PictogramLibrary:
+    def __init__(self):
+        pictogram_path = Path(__file__) / "pictogram"
+        self.pictograms: Dict[str, Pictogram] = {}
+        if pictogram_path.exists() and pictogram_path.is_dir():
+            for file in pictogram_path.iterdir():
+                if file.is_file() and file.suffix.lower() in {".png", ".jpg", ".jpeg", ".svg"}:
+                    name = file.stem
+                    self.pictograms[name] = Pictogram(name, str(file))
+
+    def get_pictogram(self, name: str) -> Pictogram:
+        return self.pictograms.get(name)
+
+    def list_pictograms(self) -> Dict[str, Pictogram]:
+        return self.pictograms
