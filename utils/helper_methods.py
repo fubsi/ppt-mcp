@@ -54,6 +54,87 @@ def resolve_picture_source(image_source: str):
 	return str(resolved_path), str(resolved_path), None
 
 
+def remove_shapes_by_ids(
+	presentations: dict,
+	presentation_id: str,
+	slide_id: int,
+	shape_ids: list[int],
+) -> dict:
+	"""Remove one or many shapes by shape IDs from a specific slide."""
+	if presentation_id not in presentations:
+		return {"error": "Presentation ID not found."}
+
+	presentation_file = presentations[presentation_id]
+	pptx_object = presentation_file.get_pptx_object()
+
+	slide_to_update = get_slide_by_id(pptx_object, slide_id)
+	if slide_to_update is None:
+		return {"error": "Slide ID not found."}
+
+	if not isinstance(shape_ids, list) or len(shape_ids) == 0:
+		return {"error": "shape_ids must be a non-empty list."}
+
+	shape_ids_int: list[int] = []
+	invalid_shape_ids: list = []
+	for raw_shape_id in shape_ids:
+		try:
+			shape_ids_int.append(int(raw_shape_id))
+		except (TypeError, ValueError):
+			invalid_shape_ids.append(raw_shape_id)
+
+	if invalid_shape_ids:
+		return {
+			"error": "All shape_ids must be numeric values.",
+			"invalid_shape_ids": invalid_shape_ids,
+		}
+
+	requested_shape_ids = list(dict.fromkeys(shape_ids_int))
+	shape_map = {shape.shape_id: shape for shape in slide_to_update.shapes}
+
+	removed_shapes: list[dict] = []
+	not_found_shape_ids: list[int] = []
+
+	for shape_id_int in requested_shape_ids:
+		shape_to_remove = shape_map.get(shape_id_int)
+		if shape_to_remove is None:
+			not_found_shape_ids.append(shape_id_int)
+			continue
+
+		shape_element = shape_to_remove.element
+		shape_parent = shape_element.getparent()
+		if shape_parent is None:
+			not_found_shape_ids.append(shape_id_int)
+			continue
+
+		removed_shapes.append(
+			{
+				"shape_id": shape_to_remove.shape_id,
+				"name": shape_to_remove.name,
+				"shape_type": str(shape_to_remove.shape_type),
+				"shape_type_value": int(shape_to_remove.shape_type),
+			}
+		)
+		shape_parent.remove(shape_element)
+
+	if not removed_shapes:
+		return {
+			"error": "No matching shapes were removed.",
+			"presentation_id": presentation_id,
+			"slide_id": slide_id,
+			"requested_shape_ids": requested_shape_ids,
+			"not_found_shape_ids": not_found_shape_ids,
+		}
+
+	return {
+		"message": "Shapes removed from slide successfully",
+		"presentation_id": presentation_id,
+		"slide_id": slide_id,
+		"requested_shape_ids": requested_shape_ids,
+		"removed_shapes": removed_shapes,
+		"not_found_shape_ids": not_found_shape_ids,
+	}
+
+
 def extract_text_from_shape(shape) -> str | None:
 	"""Safely extract visible text from a shape."""
 	if hasattr(shape, "text") and shape.text:
