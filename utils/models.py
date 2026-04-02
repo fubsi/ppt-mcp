@@ -30,10 +30,9 @@ class PresentationFile:
         return self.pptx_object
 
     def save(self, file_path: str = None):
-        if file_path:
-            self.pptx_object.save(file_path)
-
-        self.pptx_object.save(self.file_path)
+        target_path = Path(file_path) if file_path else Path(self.file_path)
+        self.pptx_object.save(target_path)
+        self.file_path = str(target_path)
         self.update_last_modified()
 
     def get_slides(self):

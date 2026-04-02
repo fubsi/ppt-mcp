@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Dict
 from uuid import uuid4
@@ -93,11 +94,19 @@ def register_file_management_tools(app: FastMCP, presentations: Dict[str, Presen
         
         presentation_file = presentations[presentation_id]
 
-        if file_path and file_name:
-            destination_path = Path(file_path) / file_name
-            presentation_file.save(destination_path)
-        else:
-            presentation_file.save()
+        try:
+            if file_path and file_name:
+                destination_dir = Path(os.path.expandvars(file_path)).expanduser()
+                destination_dir.mkdir(parents=True, exist_ok=True)
+                destination_path = destination_dir / file_name
+                presentation_file.save(destination_path)
+            else:
+                presentation_file.save()
+        except Exception as e:
+            return {
+                "error": f"Failed to save presentation file: {str(e)}",
+                "presentation_id": presentation_id,
+            }
         
         return {
             "message": "Presentation file saved successfully",
