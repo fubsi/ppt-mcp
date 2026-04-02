@@ -15,7 +15,8 @@ def register_shape_tools(app, presentations: dict[str, PresentationFile]):
 		description="Adds an image shape to a slide at an exact position and size.\
 			The presentation_id, slide_id, image_source, left, top, width, and height must be provided.\
 			image_source can be a local file path or an http/https URL.\
-			Position and size values are expected in EMUs."
+			Position and size values are expected in EMUs.\
+			Placeholder-first policy: prefer placeholder tools before adding shapes manually."
 	)
 	def add_image_to_slide(
 		presentation_id: str,
@@ -81,7 +82,8 @@ def register_shape_tools(app, presentations: dict[str, PresentationFile]):
 		),
 		description="Adds a text box shape to a slide at an exact position and size.\
 			The presentation_id, slide_id, text, left, top, width, and height must be provided.\
-			Position and size values are expected in EMUs."
+			Position and size values are expected in EMUs.\
+			Placeholder-first policy: prefer placeholder tools before adding shapes manually."
 	)
 	def add_text_to_slide(
 		presentation_id: str,
@@ -144,7 +146,8 @@ def register_shape_tools(app, presentations: dict[str, PresentationFile]):
 		),
 		description="Removes multiple shapes from a slide using shape_ids.\
 			The presentation_id, slide_id, and shape_ids must be provided.\
-			Use get_slide_content to find the correct shape_ids on a slide."
+			Use get_slide_content to find the correct shape_ids on a slide.\
+			Placeholder-first policy: prefer placeholder tools before adding shapes manually."
 	)
 	def remove_shapes_from_slide(
 		presentation_id: str,

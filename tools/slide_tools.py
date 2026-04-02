@@ -11,7 +11,8 @@ def register_slide_tools(app, presentations: dict[str, PresentationFile]):
             title="Read possible slide layouts",
             readOnlyHint=False,
         ),
-        description="Reads the possible slide layouts for a given presentation file."
+        description="Reads the possible slide layouts for a given presentation file. \
+            Placeholder-first policy: when adding content to slides, prefer placeholder tools before manual shape tools."
     )
     def get_slide_layouts(presentation_id: str) -> dict:
         """Get the possible slide layouts for a presentation file."""
@@ -36,7 +37,8 @@ def register_slide_tools(app, presentations: dict[str, PresentationFile]):
             title="Get present slides",
             readOnlyHint=False,
         ),
-        description="Reads the slides in a given presentation file."
+        description="Reads the slides in a given presentation file. \
+            Placeholder-first policy: when adding content to slides, prefer placeholder tools before manual shape tools."
     )
     def get_slides(presentation_id: str) -> dict:
         """Get the slides in a presentation file."""
@@ -61,7 +63,8 @@ def register_slide_tools(app, presentations: dict[str, PresentationFile]):
         ),
         description="Adds a new slide to a given presentation file.\
             The presentation_id and layout_index must be provided for this operation.\
-            Use the get_slide_layouts tool to find the correct layout_index for the desired slide layout."
+            Use the get_slide_layouts tool to find the correct layout_index for the desired slide layout.\
+            Placeholder-first policy: when adding content to slides, prefer placeholder tools before manual shape tools."
     )
     def add_slide(presentation_id: str, layout_index: int, slide_name: str = None) -> dict:
         """Add a new slide to a presentation file."""
@@ -97,7 +100,8 @@ def register_slide_tools(app, presentations: dict[str, PresentationFile]):
         ),
         description="Removes a slide from a given presentation file.\
             The presentation_id and slide_id must be provided for this operation.\
-            Use the get_slides tool to find the correct slide_id for the desired slide."
+            Use the get_slides tool to find the correct slide_id for the desired slide.\
+            Placeholder-first policy: when adding content to slides, prefer placeholder tools before manual shape tools."
     )
     def remove_slide(presentation_id: str, slide_id: int) -> dict:
         """Remove a slide from a presentation file."""
@@ -127,7 +131,8 @@ def register_slide_tools(app, presentations: dict[str, PresentationFile]):
         ),
         description="Renames a slide in a given presentation file.\
             The presentation_id, slide_id, and new_name must be provided for this operation.\
-            Use the get_slides tool to find the correct slide_id for the desired slide."
+            Use the get_slides tool to find the correct slide_id for the desired slide.\
+            Placeholder-first policy: when adding content to slides, prefer placeholder tools before manual shape tools."
     )
     def rename_slide(presentation_id: str, slide_id: int, new_name: str) -> dict:
         """Rename a slide in a presentation file."""
@@ -158,7 +163,8 @@ def register_slide_tools(app, presentations: dict[str, PresentationFile]):
         ),
         description="Retrieves the content of a slide in a given presentation file.\
             The presentation_id and slide_id must be provided for this operation.\
-            Use the get_slides tool to find the correct slide_id for the desired slide."
+            Use the get_slides tool to find the correct slide_id for the desired slide.\
+            Placeholder-first policy: when adding content to slides, prefer placeholder tools before manual shape tools."
     )
     def get_slide_content(presentation_id: str, slide_id: int) -> dict:
         """Get the content of a slide in a presentation file."""

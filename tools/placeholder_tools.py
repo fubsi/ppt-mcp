@@ -18,7 +18,8 @@ def register_placeholder_tools(app, presentations):
         description="Inserts an image into a PICTURE placeholder on a specific slide.\
             The presentation_id, slide_id, placeholder_shape_id, and image_path must be provided for this operation.\
             image_path can be a local file path or an http/https URL.\
-            Use get_slides to find slide_id and placeholder_shape_id values."
+            Use get_slides to find slide_id and placeholder_shape_id values.\
+            Placeholder-first policy: this is the preferred way to add content before manual shape tools."
     )
     def insert_picture_into_placeholder(
         presentation_id: str,
@@ -81,7 +82,8 @@ def register_placeholder_tools(app, presentations):
         ),
         description="Inserts text into a text-capable placeholder on a specific slide.\
             The presentation_id, slide_id, placeholder_shape_id, and text must be provided for this operation.\
-            Use get_slides to find slide_id and placeholder_shape_id values."
+            Use get_slides to find slide_id and placeholder_shape_id values.\
+            Placeholder-first policy: this is the preferred way to add content before manual shape tools."
     )
     def insert_text_into_placeholder(
         presentation_id: str,

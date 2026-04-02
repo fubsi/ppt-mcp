@@ -19,7 +19,8 @@ def register_pictogram_tools(app: FastMCP, presentations: Dict[str, Presentation
             title="Get Pictogram List",
             readOnlyHint=True,
         ),
-        description="Returns a list of all available pictograms in the library."
+        description="Returns a list of all available pictograms in the library. \
+        Placeholder-first policy: when adding content to slides, prefer placeholder tools before manual shape tools."
     )
     def get_pictogram_list() -> Dict:
         """Return a list of all available pictograms."""
@@ -36,7 +37,8 @@ def register_pictogram_tools(app: FastMCP, presentations: Dict[str, Presentation
         description="Adds a pictogram image from the pictogram library to a slide at an exact position. \
         The presentation_id, slide_id, pictogram_name, left, and top must be provided. \
         Optional width and height can be provided to resize the pictogram. \
-        Position and size values are expected in EMUs."
+        Position and size values are expected in EMUs. \
+        Placeholder-first policy: prefer placeholder tools before adding shapes manually."
     )
     def add_pictogram_to_slide(
         presentation_id: str,

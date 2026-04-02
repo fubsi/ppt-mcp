@@ -26,7 +26,8 @@ def register_file_management_tools(app: FastMCP, presentations: Dict[str, Presen
             readOnlyHint=False,
         ),
         description="Creates a new Powerpoint presentation file and returns its information. \
-        The presentation_id returned must be used for subsequent operations on this file."
+        The presentation_id returned must be used for subsequent operations on this file. \
+        Placeholder-first policy: when adding content to slides later, prefer placeholder tools before manual shape tools."
     )
     def create_presentation_file() -> Dict:
         """Create a new PowerPoint presentation file."""
@@ -58,7 +59,8 @@ def register_file_management_tools(app: FastMCP, presentations: Dict[str, Presen
             readOnlyHint=False,
         ),
         description="Opens an existing presentation file from disk and returns its information. \
-        The presentation_id returned must be used for subsequent operations on this file."
+        The presentation_id returned must be used for subsequent operations on this file. \
+        Placeholder-first policy: when adding content to slides later, prefer placeholder tools before manual shape tools."
     )
     def open_presentation_file(file_path: str) -> Dict:
         """Open an existing presentation file."""
@@ -81,7 +83,8 @@ def register_file_management_tools(app: FastMCP, presentations: Dict[str, Presen
             readOnlyHint=False,
         ),
         description="Saves the presentation file to disk and returns its information. \
-        The presentation_id must be provided for this operation."
+        The presentation_id must be provided for this operation. \
+        Placeholder-first policy: when adding content to slides later, prefer placeholder tools before manual shape tools."
     )
     def save_presentation_file(presentation_id: str, file_path: str = None, file_name: str = None) -> Dict:
         """Save the presentation file to disk."""
@@ -109,7 +112,8 @@ def register_file_management_tools(app: FastMCP, presentations: Dict[str, Presen
         ),
         description="Removes a presentation file from the global state and deletes the file from disk. \
         The presentation_id must be provided for this operation. \
-        Use this tool to clean up temporary files created during testing or if a file is no longer needed."
+        Use this tool to clean up temporary files created during testing or if a file is no longer needed. \
+        Placeholder-first policy: when adding content to slides later, prefer placeholder tools before manual shape tools."
     )
     def cleanup_presentation_file(presentation_id: str) -> Dict:
         """Remove a presentation file from global state and delete the file from disk."""
