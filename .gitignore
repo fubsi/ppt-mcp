@@ -16,3 +16,6 @@ CLAUDE.md
 # Templates and generated files
 /temp_presentations/
 *.pptx
+
+# Local configuration files
+mcp-config.json

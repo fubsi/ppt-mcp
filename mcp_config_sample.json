@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "word-document-server": {
+      "command": "D:\\PATH\\TO\\PROJECT\\.venv\\Scripts\\python.exe",
+      "args": [
+        "D:\\PATH\\TO\\PROJECT\\ppt_mcp_server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "D:\\PATH\\TO\\PROJECT"
+      }
+    }
+  }
+}
