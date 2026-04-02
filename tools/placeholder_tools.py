@@ -1,10 +1,11 @@
 from mcp.types import ToolAnnotations
-from io import BytesIO
-from pathlib import Path
 from pptx.enum.shapes import PP_PLACEHOLDER
-from urllib.error import URLError, HTTPError
-from urllib.parse import urlparse
-from urllib.request import urlopen
+
+from utils.helper_methods import (
+    get_placeholder_by_shape_id,
+    get_slide_by_id,
+    resolve_picture_source,
+)
 
 def register_placeholder_tools(app, presentations):
     """Register placeholder tools for PowerPoint file management."""
@@ -29,46 +30,19 @@ def register_placeholder_tools(app, presentations):
         if presentation_id not in presentations:
             return {"error": "Presentation ID not found."}
 
-        parsed_image_path = urlparse(image_path)
-        image_source = None
-        image_source_label = image_path
-
-        if parsed_image_path.scheme in ("http", "https"):
-            try:
-                with urlopen(image_path, timeout=10) as response:
-                    image_data = response.read()
-                if not image_data:
-                    return {"error": "Image URL returned no data."}
-                image_source = BytesIO(image_data)
-            except (HTTPError, URLError, TimeoutError, ValueError) as exc:
-                return {
-                    "error": "Failed to download image from URL.",
-                    "details": str(exc),
-                }
-        else:
-            resolved_image_path = Path(image_path).expanduser().resolve()
-            if not resolved_image_path.exists() or not resolved_image_path.is_file():
-                return {"error": "Image file not found."}
-            image_source = str(resolved_image_path)
-            image_source_label = str(resolved_image_path)
+        image_source, image_source_label, source_error = resolve_picture_source(image_path)
+        if source_error is not None:
+            return source_error
 
         presentation_file = presentations[presentation_id]
         pptx_object = presentation_file.get_pptx_object()
 
-        slide_to_update = None
-        for slide in pptx_object.slides:
-            if slide.slide_id == slide_id:
-                slide_to_update = slide
-                break
+        slide_to_update = get_slide_by_id(pptx_object, slide_id)
 
         if slide_to_update is None:
             return {"error": "Slide ID not found."}
 
-        target_placeholder = None
-        for placeholder in slide_to_update.placeholders:
-            if placeholder.shape_id == placeholder_shape_id:
-                target_placeholder = placeholder
-                break
+        target_placeholder = get_placeholder_by_shape_id(slide_to_update, placeholder_shape_id)
 
         if target_placeholder is None:
             return {"error": "Placeholder shape ID not found on this slide."}
@@ -122,20 +96,12 @@ def register_placeholder_tools(app, presentations):
         presentation_file = presentations[presentation_id]
         pptx_object = presentation_file.get_pptx_object()
 
-        slide_to_update = None
-        for slide in pptx_object.slides:
-            if slide.slide_id == slide_id:
-                slide_to_update = slide
-                break
+        slide_to_update = get_slide_by_id(pptx_object, slide_id)
 
         if slide_to_update is None:
             return {"error": "Slide ID not found."}
 
-        target_placeholder = None
-        for placeholder in slide_to_update.placeholders:
-            if placeholder.shape_id == placeholder_shape_id:
-                target_placeholder = placeholder
-                break
+        target_placeholder = get_placeholder_by_shape_id(slide_to_update, placeholder_shape_id)
 
         if target_placeholder is None:
             return {"error": "Placeholder shape ID not found on this slide."}

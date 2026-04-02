@@ -1,59 +1,10 @@
 from mcp.types import ToolAnnotations
+
+from utils.helper_methods import get_slide_by_id, get_slide_with_index_by_id, serialize_slide
 from utils.models import PresentationFile
 
 def register_slide_tools(app, presentations: dict[str, PresentationFile]):
     """Register slide tools for PowerPoint file management."""
-
-    def _extract_text_from_shape(shape) -> str | None:
-        """Safely extract visible text from a shape."""
-        if hasattr(shape, "text") and shape.text:
-            return shape.text
-        if hasattr(shape, "text_frame") and shape.text_frame is not None:
-            return shape.text_frame.text
-        return None
-
-    def _serialize_slide(slide, slide_index: int) -> dict:
-        notes_text = None
-        if slide.has_notes_slide and slide.notes_slide is not None:
-            notes_text = slide.notes_slide.notes_text_frame.text
-
-        placeholders = [_serialize_placeholder(p) for p in slide.placeholders]
-        shapes = [_serialize_shape(s) for s in slide.shapes]
-
-        return {
-            "slide_id": slide.slide_id,
-            "slide_index": slide_index,
-            "name": slide.name,
-            "slide_layout": slide.slide_layout.name,
-            "has_notes": slide.has_notes_slide,
-            "slide_notes": notes_text,
-            "placeholders_count": len(placeholders),
-            "shapes_count": len(shapes),
-            "slide_placeholders": placeholders,
-            "slide_shapes": shapes,
-        }
-
-    def _serialize_placeholder(placeholder) -> dict:
-        return {
-            "placeholder_shape_id": placeholder.shape_id,
-            "placeholder_type": str(placeholder.placeholder_format.type),
-            "placeholder_type_value": int(placeholder.placeholder_format.type),
-            "placeholder_text": _extract_text_from_shape(placeholder),
-        }
-
-    def _serialize_shape(shape) -> dict:
-        return {
-            "shape_id": shape.shape_id,
-            "name": shape.name,
-            "shape_type": str(shape.shape_type),
-            "shape_type_value": int(shape.shape_type),
-            "left": int(shape.left),
-            "top": int(shape.top),
-            "width": int(shape.width),
-            "height": int(shape.height),
-            "has_text": hasattr(shape, "text_frame") and shape.text_frame is not None,
-            "shape_text": _extract_text_from_shape(shape),
-        }
 
     @app.tool(
         annotations=ToolAnnotations(
@@ -95,7 +46,7 @@ def register_slide_tools(app, presentations: dict[str, PresentationFile]):
         presentation_file = presentations[presentation_id]
         slides = presentation_file.get_slides()
 
-        slides_info = [_serialize_slide(slide, index) for index, slide in enumerate(slides)]
+        slides_info = [serialize_slide(slide, index) for index, slide in enumerate(slides)]
 
         return {
             "message": "Slides retrieved successfully",
@@ -156,11 +107,7 @@ def register_slide_tools(app, presentations: dict[str, PresentationFile]):
         presentation_file = presentations[presentation_id]
         pptx_object = presentation_file.get_pptx_object()
 
-        slide_to_remove = None
-        for slide in pptx_object.slides:
-            if slide.slide_id == slide_id:
-                slide_to_remove = slide
-                break
+        slide_to_remove = get_slide_by_id(pptx_object, slide_id)
 
         if not slide_to_remove:
             return {"error": "Slide ID not found."}
@@ -190,11 +137,7 @@ def register_slide_tools(app, presentations: dict[str, PresentationFile]):
         presentation_file = presentations[presentation_id]
         pptx_object = presentation_file.get_pptx_object()
 
-        slide_to_rename = None
-        for slide in pptx_object.slides:
-            if slide.slide_id == slide_id:
-                slide_to_rename = slide
-                break
+        slide_to_rename = get_slide_by_id(pptx_object, slide_id)
 
         if not slide_to_rename:
             return {"error": "Slide ID not found."}
@@ -225,13 +168,7 @@ def register_slide_tools(app, presentations: dict[str, PresentationFile]):
         presentation_file = presentations[presentation_id]
         pptx_object = presentation_file.get_pptx_object()
 
-        slide_to_get = None
-        slide_index = None
-        for index, slide in enumerate(pptx_object.slides):
-            if slide.slide_id == slide_id:
-                slide_to_get = slide
-                slide_index = index
-                break
+        slide_to_get, slide_index = get_slide_with_index_by_id(pptx_object, slide_id)
 
         if slide_to_get is None:
             return {"error": "Slide ID not found."}
@@ -239,5 +176,5 @@ def register_slide_tools(app, presentations: dict[str, PresentationFile]):
         return {
             "message": "Slide content retrieved successfully",
             "presentation_id": presentation_id,
-            "slide_content": _serialize_slide(slide_to_get, slide_index)
+            "slide_content": serialize_slide(slide_to_get, slide_index)
         }

@@ -1,43 +1,11 @@
-from io import BytesIO
-from pathlib import Path
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
-from urllib.request import urlopen
-
 from mcp.types import ToolAnnotations
 
+from utils.helper_methods import get_slide_by_id, resolve_picture_source
 from utils.models import PresentationFile
 
 
 def register_shape_tools(app, presentations: dict[str, PresentationFile]):
 	"""Register shape tools for PowerPoint file management."""
-
-	def _get_slide_by_id(pptx_object, slide_id: int):
-		for slide in pptx_object.slides:
-			if slide.slide_id == slide_id:
-				return slide
-		return None
-
-	def _resolve_picture_source(image_source: str):
-		parsed = urlparse(image_source)
-		if parsed.scheme in ("http", "https"):
-			try:
-				with urlopen(image_source, timeout=10) as response:
-					image_data = response.read()
-				if not image_data:
-					return None, None, {"error": "Image URL returned no data."}
-				return BytesIO(image_data), image_source, None
-			except (HTTPError, URLError, TimeoutError, ValueError) as exc:
-				return None, None, {
-					"error": "Failed to download image from URL.",
-					"details": str(exc),
-				}
-
-		resolved_path = Path(image_source).expanduser().resolve()
-		if not resolved_path.exists() or not resolved_path.is_file():
-			return None, None, {"error": "Image file not found."}
-
-		return str(resolved_path), str(resolved_path), None
 
 	@app.tool(
 		annotations=ToolAnnotations(
@@ -65,7 +33,7 @@ def register_shape_tools(app, presentations: dict[str, PresentationFile]):
 		presentation_file = presentations[presentation_id]
 		pptx_object = presentation_file.get_pptx_object()
 
-		slide_to_update = _get_slide_by_id(pptx_object, slide_id)
+		slide_to_update = get_slide_by_id(pptx_object, slide_id)
 		if slide_to_update is None:
 			return {"error": "Slide ID not found."}
 
@@ -77,7 +45,7 @@ def register_shape_tools(app, presentations: dict[str, PresentationFile]):
 		except (TypeError, ValueError):
 			return {"error": "left, top, width, and height must be numeric values."}
 
-		picture_source, picture_source_label, source_error = _resolve_picture_source(image_source)
+		picture_source, picture_source_label, source_error = resolve_picture_source(image_source)
 		if source_error is not None:
 			return source_error
 
@@ -131,7 +99,7 @@ def register_shape_tools(app, presentations: dict[str, PresentationFile]):
 		presentation_file = presentations[presentation_id]
 		pptx_object = presentation_file.get_pptx_object()
 
-		slide_to_update = _get_slide_by_id(pptx_object, slide_id)
+		slide_to_update = get_slide_by_id(pptx_object, slide_id)
 		if slide_to_update is None:
 			return {"error": "Slide ID not found."}
 
