@@ -1,14 +1,14 @@
 from pathlib import Path
 from typing import Dict
 
-from mcp import FastMCP
+from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from utils.helper_methods import get_slide_by_id
 from utils.models import PictogramLibrary, PresentationFile
 
 def register_pictogram_tools(app: FastMCP, presentations: Dict[str, PresentationFile]):
-    """Register simple PowerPoint file management tools."""
+    """Register pictogram tools for PowerPoint file management."""
 
     pictogram_library = PictogramLibrary()
 
