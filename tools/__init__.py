@@ -6,10 +6,12 @@ from .file_management import register_file_management_tools
 from .placeholder_tools import register_placeholder_tools
 from .shape_tools import register_shape_tools
 from .slide_tools import register_slide_tools
+from .pictogram import register_pictogram_tools
 
 __all__ = [
     "register_file_management_tools",
     "register_placeholder_tools",
     "register_shape_tools",
     "register_slide_tools",
+    "register_pictogram_tools",
 ]

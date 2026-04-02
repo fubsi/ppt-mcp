@@ -6,7 +6,7 @@ from mcp.types import ToolAnnotations
 
 from utils.models import PresentationFile, PictogramLibrary
 
-def register_pictogram_tools(app: FastMCP, presentations: Dict[str, PresentationFile], default_template_file_path: str):
+def register_pictogram_tools(app: FastMCP, presentations: Dict[str, PresentationFile]):
     """Register simple PowerPoint file management tools."""
 
     pictogram_library = PictogramLibrary()

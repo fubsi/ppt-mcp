@@ -12,6 +12,7 @@ from tools import (
     register_placeholder_tools,
     register_shape_tools,
     register_slide_tools,
+    register_pictogram_tools,
 )
 
 # Initialize the FastMCP server
@@ -28,6 +29,7 @@ def register_tools(default_template_file_path: str = "Template.pptx"):
     register_placeholder_tools(app, presentations)
     register_shape_tools(app, presentations)
     register_slide_tools(app, presentations)
+    register_pictogram_tools(app, presentations)
 
 
 @app.tool()
