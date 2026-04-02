@@ -1,6 +1,6 @@
 import importlib
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 from tempfile import NamedTemporaryFile
 
 from mcp.server.fastmcp import FastMCP
@@ -35,7 +35,8 @@ def register_pictogram_tools(app: FastMCP, presentations: Dict[str, Presentation
         ),
         description="Adds a pictogram image from the pictogram library to a slide at an exact position. \
         The presentation_id, slide_id, pictogram_name, left, and top must be provided. \
-        Position values are expected in EMUs."
+        Optional width and height can be provided to resize the pictogram. \
+        Position and size values are expected in EMUs."
     )
     def add_pictogram_to_slide(
         presentation_id: str,
@@ -43,6 +44,8 @@ def register_pictogram_tools(app: FastMCP, presentations: Dict[str, Presentation
         pictogram_name: str,
         top: int = 0,
         left: int = 0,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
     ) -> Dict:
         """Add a pictogram from the local library to a specific slide."""
         if presentation_id not in presentations:
@@ -113,10 +116,18 @@ def register_pictogram_tools(app: FastMCP, presentations: Dict[str, Presentation
             return {"error": "left and top must be numeric values."}
 
         try:
+            width_emu = int(width) if width is not None else None
+            height_emu = int(height) if height is not None else None
+        except (TypeError, ValueError):
+            return {"error": "width and height must be numeric values when provided."}
+
+        try:
             inserted_picture = slide_to_update.shapes.add_picture(
                 str(insert_path),
                 left_emu,
                 top_emu,
+                width_emu,
+                height_emu,
             )
         except Exception as exc:
             return {
