@@ -1,4 +1,4 @@
-# Office-PowerPoint-MCP-Server
+# PowerPoint-MCP-Server
 
 A compact MCP (Model Context Protocol) server for practical PowerPoint editing with `python-pptx`.
 
@@ -111,7 +111,7 @@ python ppt_mcp_server.py --template-file-path "C:/path/to/Template.pptx"
 ## Project Structure
 
 ```text
-Office-PowerPoint-MCP-Server/
+ppt-mcp/
 |- ppt_mcp_server.py
 |- tools/
 |  |- __init__.py
