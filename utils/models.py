@@ -51,7 +51,7 @@ class Pictogram:
 
 class PictogramLibrary:
     def __init__(self):
-        pictogram_path = Path(__file__) / "pictogram"
+        pictogram_path = Path(__file__).parent / "pictogram"
         self.pictograms: Dict[str, Pictogram] = {}
         if pictogram_path.exists() and pictogram_path.is_dir():
             for file in pictogram_path.iterdir():

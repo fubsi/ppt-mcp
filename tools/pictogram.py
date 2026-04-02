@@ -1,5 +1,7 @@
+import importlib
 from pathlib import Path
 from typing import Dict
+from tempfile import NamedTemporaryFile
 
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
@@ -61,12 +63,47 @@ def register_pictogram_tools(app: FastMCP, presentations: Dict[str, Presentation
 
         pictogram = pictogram_library.pictograms[pictogram_name]
 
-        pictogram_path = Path(pictogram.image_path).expanduser().resolve()
+        pictogram_path = Path(pictogram.image_path)
         if not pictogram_path.exists() or not pictogram_path.is_file():
             return {
                 "error": "Pictogram image file not found.",
                 "pictogram_name": pictogram_name,
                 "image_path": str(pictogram_path),
+            }
+
+        insert_path = pictogram_path
+        temp_converted_path = None
+        supported_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff", ".wmf"}
+
+        if pictogram_path.suffix.lower() == ".svg":
+            try:
+                cairosvg = importlib.import_module("cairosvg")
+            except ImportError:
+                return {
+                    "error": "SVG pictograms are not directly supported by python-pptx. Install cairosvg to enable SVG conversion.",
+                    "pictogram_name": pictogram_name,
+                    "image_path": str(pictogram_path),
+                }
+
+            try:
+                png_bytes = cairosvg.svg2png(url=str(pictogram_path))
+                with NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
+                    tmp_file.write(png_bytes)
+                    temp_converted_path = Path(tmp_file.name)
+                insert_path = temp_converted_path
+            except Exception as exc:
+                return {
+                    "error": "Failed to convert SVG pictogram to PNG.",
+                    "pictogram_name": pictogram_name,
+                    "image_path": str(pictogram_path),
+                    "details": str(exc),
+                }
+        elif pictogram_path.suffix.lower() not in supported_extensions:
+            return {
+                "error": "Unsupported pictogram image format for python-pptx.",
+                "pictogram_name": pictogram_name,
+                "image_path": str(pictogram_path),
+                "supported_extensions": sorted(supported_extensions),
             }
 
         try:
@@ -75,11 +112,25 @@ def register_pictogram_tools(app: FastMCP, presentations: Dict[str, Presentation
         except (TypeError, ValueError):
             return {"error": "left and top must be numeric values."}
 
-        inserted_picture = slide_to_update.shapes.add_picture(
-            str(pictogram_path),
-            left_emu,
-            top_emu,
-        )
+        try:
+            inserted_picture = slide_to_update.shapes.add_picture(
+                str(insert_path),
+                left_emu,
+                top_emu,
+            )
+        except Exception as exc:
+            return {
+                "error": "Failed to add pictogram to slide.",
+                "pictogram_name": pictogram_name,
+                "image_path": str(pictogram_path),
+                "details": str(exc),
+            }
+        finally:
+            if temp_converted_path and temp_converted_path.exists():
+                try:
+                    temp_converted_path.unlink()
+                except OSError:
+                    pass
 
         return {
             "message": "Pictogram added to slide successfully",
