@@ -3,9 +3,12 @@ from __future__ import annotations
 import math
 from io import BytesIO
 from pathlib import Path
+from typing import Optional
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import urlopen
+
+from pptx.oxml.ns import qn
 
 
 EMU_PER_POINT = 12700
@@ -205,14 +208,122 @@ def _to_points(emu_value: int) -> float:
 	return max(0.0, float(emu_value) / EMU_PER_POINT)
 
 
-def _get_paragraph_font_size_pt(paragraph) -> float:
-	"""Resolve paragraph font size in points with sensible fallback."""
+def _font_size_pt_from_oxml_rpr(rpr) -> Optional[float]:
+	"""Read OOXML font size from an rPr-like node (sz is in 1/100 pt)."""
+	if rpr is None:
+		return None
+
+	sz_attr = rpr.get("sz")
+	if sz_attr is None:
+		return None
+
+	try:
+		return float(int(sz_attr)) / 100.0
+	except (TypeError, ValueError):
+		return None
+
+
+def _font_size_pt_from_paragraph_xml(paragraph) -> Optional[float]:
+	"""Read font size directly from paragraph OOXML when available."""
+	p_element = getattr(paragraph, "_p", None)
+	if p_element is None:
+		return None
+
+	# 1) End paragraph run properties can carry inherited effective size.
+	end_para_rpr = p_element.find(qn("a:endParaRPr"))
+	font_size_pt = _font_size_pt_from_oxml_rpr(end_para_rpr)
+	if font_size_pt is not None:
+		return font_size_pt
+
+	# 2) Paragraph properties may define default run properties.
+	p_pr = p_element.find(qn("a:pPr"))
+	if p_pr is not None:
+		def_rpr = p_pr.find(qn("a:defRPr"))
+		font_size_pt = _font_size_pt_from_oxml_rpr(def_rpr)
+		if font_size_pt is not None:
+			return font_size_pt
+
+	return None
+
+
+def _font_size_pt_from_list_style(paragraph, shape) -> Optional[float]:
+	"""Resolve paragraph-level default font size from text body list style."""
+	if shape is None or not hasattr(shape, "text_frame") or shape.text_frame is None:
+		return None
+
+	tx_body = getattr(shape.text_frame, "_txBody", None)
+	if tx_body is None:
+		return None
+
+	lst_style = tx_body.find(qn("a:lstStyle"))
+	if lst_style is None:
+		return None
+
+	# Paragraph level is 0-based; OOXML list style tags are lvl1..lvl9.
+	level = max(0, min(8, int(getattr(paragraph, "level", 0))))
+	level_tag = qn(f"a:lvl{level + 1}pPr")
+	level_p_pr = lst_style.find(level_tag)
+	if level_p_pr is None:
+		return None
+
+	def_rpr = level_p_pr.find(qn("a:defRPr"))
+	return _font_size_pt_from_oxml_rpr(def_rpr)
+
+
+def _font_size_pt_from_layout_placeholder(paragraph, shape) -> Optional[float]:
+	"""Resolve font size from the matching layout placeholder list style."""
+	if shape is None:
+		return None
+
+	try:
+		placeholder_idx = int(shape.placeholder_format.idx)
+	except Exception:
+		return None
+
+	slide_layout = getattr(getattr(shape, "part", None), "slide_layout", None)
+	if slide_layout is None:
+		return None
+
+	for layout_placeholder in slide_layout.placeholders:
+		try:
+			if int(layout_placeholder.placeholder_format.idx) != placeholder_idx:
+				continue
+		except Exception:
+			continue
+
+		font_size_pt = _font_size_pt_from_paragraph_xml(layout_placeholder.text_frame.paragraphs[0])
+		if font_size_pt is not None:
+			return font_size_pt
+
+		font_size_pt = _font_size_pt_from_list_style(paragraph, layout_placeholder)
+		if font_size_pt is not None:
+			return font_size_pt
+
+		break
+
+	return None
+
+
+def _get_paragraph_font_size_pt(paragraph, shape=None) -> float:
+	"""Resolve paragraph font size in points with inherited-style fallback."""
 	if paragraph.font is not None and paragraph.font.size is not None:
 		return float(paragraph.font.size.pt)
 
 	for run in paragraph.runs:
 		if run.font is not None and run.font.size is not None:
 			return float(run.font.size.pt)
+
+	font_size_pt = _font_size_pt_from_paragraph_xml(paragraph)
+	if font_size_pt is not None:
+		return font_size_pt
+
+	font_size_pt = _font_size_pt_from_list_style(paragraph, shape)
+	if font_size_pt is not None:
+		return font_size_pt
+
+	font_size_pt = _font_size_pt_from_layout_placeholder(paragraph, shape)
+	if font_size_pt is not None:
+		return font_size_pt
 
 	return DEFAULT_FONT_SIZE_PT
 
@@ -247,7 +358,7 @@ def analyze_text_overflow_in_shape(shape) -> dict:
 
 	for paragraph in text_frame.paragraphs:
 		paragraph_text = paragraph.text or ""
-		font_size_pt = _get_paragraph_font_size_pt(paragraph)
+		font_size_pt = _get_paragraph_font_size_pt(paragraph, shape)
 		line_height_pt = font_size_pt * LINE_HEIGHT_FACTOR
 		chars_per_line = max(1, int(available_width_pt / (font_size_pt * AVG_CHAR_WIDTH_FACTOR)))
 

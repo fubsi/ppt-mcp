@@ -85,6 +85,7 @@ def register_file_management_tools(app: FastMCP, presentations: Dict[str, Presen
         ),
         description="Saves the presentation file to disk and returns its information. \
         The presentation_id must be provided for this operation. \
+        This tool must be run each time a modifying iteration is completed. \
         Placeholder-first policy: when adding content to slides later, prefer placeholder tools before manual shape tools."
     )
     def save_presentation_file(presentation_id: str, file_path: str = None, file_name: str = None) -> Dict:
@@ -93,26 +94,60 @@ def register_file_management_tools(app: FastMCP, presentations: Dict[str, Presen
             return {"error": "Presentation ID not found."}
         
         presentation_file = presentations[presentation_id]
+        requested_destination = None
+
+        if file_path:
+            expanded_path = Path(os.path.expandvars(file_path)).expanduser()
+            # Backward compatibility: when file_name is provided, treat file_path as a directory.
+            requested_destination = expanded_path / file_name if file_name else expanded_path
 
         try:
-            if file_path and file_name:
-                destination_dir = Path(os.path.expandvars(file_path)).expanduser()
-                destination_dir.mkdir(parents=True, exist_ok=True)
-                destination_path = destination_dir / file_name
-                presentation_file.save(destination_path)
-            else:
-                presentation_file.save()
-        except Exception as e:
+            if requested_destination is not None:
+                requested_destination.parent.mkdir(parents=True, exist_ok=True)
+                presentation_file.save(requested_destination)
+                return {
+                    "message": "Presentation file saved successfully",
+                    "presentation_id": presentation_id,
+                    "requested_path": str(requested_destination),
+                    "effective_path": str(Path(presentation_file.file_path).resolve()),
+                    "used_fallback": False,
+                    "file_info": presentation_file.get_file_info(),
+                }
+
+            presentation_file.save()
             return {
-                "error": f"Failed to save presentation file: {str(e)}",
+                "message": "Presentation file saved successfully",
+                "presentation_id": presentation_id,
+                "requested_path": None,
+                "effective_path": str(Path(presentation_file.file_path).resolve()),
+                "used_fallback": False,
+                "file_info": presentation_file.get_file_info(),
+            }
+        except Exception as requested_save_error:
+            if requested_destination is not None:
+                # Fallback to the current temp/original location if requested destination fails.
+                try:
+                    presentation_file.save()
+                    return {
+                        "message": "Presentation file saved using fallback path",
+                        "presentation_id": presentation_id,
+                        "requested_path": str(requested_destination),
+                        "effective_path": str(Path(presentation_file.file_path).resolve()),
+                        "used_fallback": True,
+                        "fallback_reason": str(requested_save_error),
+                        "file_info": presentation_file.get_file_info(),
+                    }
+                except Exception as fallback_save_error:
+                    return {
+                        "error": f"Failed to save presentation file: requested path error: {requested_save_error}; fallback error: {fallback_save_error}",
+                        "presentation_id": presentation_id,
+                        "requested_path": str(requested_destination),
+                    }
+
+            return {
+                "error": f"Failed to save presentation file: {str(requested_save_error)}",
                 "presentation_id": presentation_id,
             }
-        
-        return {
-            "message": "Presentation file saved successfully",
-            "presentation_id": presentation_id,
-            "file_info": presentation_file.get_file_info()
-        }
 
     @app.tool(
         annotations=ToolAnnotations(

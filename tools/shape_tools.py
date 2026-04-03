@@ -5,12 +5,29 @@ from utils.helper_methods import (
 	get_slide_by_id,
 	remove_shapes_by_ids,
 	resolve_picture_source,
+	serialize_shape,
 )
 from utils.models import PresentationFile
 
 
 def register_shape_tools(app, presentations: dict[str, PresentationFile]):
 	"""Register shape tools for PowerPoint file management."""
+
+	def _shapes_collide(shape_a, shape_b) -> bool:
+		"""Return True when two shape bounding boxes overlap (strict overlap)."""
+		left_a = int(shape_a.left)
+		top_a = int(shape_a.top)
+		right_a = left_a + int(shape_a.width)
+		bottom_a = top_a + int(shape_a.height)
+
+		left_b = int(shape_b.left)
+		top_b = int(shape_b.top)
+		right_b = left_b + int(shape_b.width)
+		bottom_b = top_b + int(shape_b.height)
+
+		horizontal_overlap = left_a < right_b and right_a > left_b
+		vertical_overlap = top_a < bottom_b and bottom_a > top_b
+		return horizontal_overlap and vertical_overlap
 
 	@app.tool(
 		annotations=ToolAnnotations(
@@ -164,3 +181,59 @@ def register_shape_tools(app, presentations: dict[str, PresentationFile]):
 	) -> dict:
 		"""Remove multiple shapes from a slide by shape_id."""
 		return remove_shapes_by_ids(presentations, presentation_id, slide_id, shape_ids)
+
+	@app.tool(
+		annotations=ToolAnnotations(
+			title="Check shape collisions",
+			readOnlyHint=True,
+		),
+		description="Checks all slides in a presentation for shape collisions (overlapping bounds).\
+			The presentation_id must be provided.\
+			Returns per-slide collision pairs including shape metadata for each colliding shape.\
+			Run this at the end of every modifying iteration to validate that no collisions are occurring."
+	)
+	def check_shape_collisions(presentation_id: str) -> dict:
+		"""Check all slides for colliding shapes and return detailed collision pairs."""
+		if presentation_id not in presentations:
+			return {"error": "Presentation ID not found."}
+
+		presentation_file = presentations[presentation_id]
+		pptx_object = presentation_file.get_pptx_object()
+
+		slides_with_collisions: list[dict] = []
+		total_collision_pairs = 0
+
+		for slide_index, slide in enumerate(pptx_object.slides):
+			shape_list = list(slide.shapes)
+			slide_collisions: list[dict] = []
+
+			for i, shape_a in enumerate(shape_list):
+				for shape_b in shape_list[i + 1 :]:
+					if _shapes_collide(shape_a, shape_b):
+						slide_collisions.append(
+							{
+								"shape_a": serialize_shape(shape_a),
+								"shape_b": serialize_shape(shape_b),
+							}
+						)
+
+			if slide_collisions:
+				total_collision_pairs += len(slide_collisions)
+				slides_with_collisions.append(
+					{
+						"slide_id": slide.slide_id,
+						"slide_index": slide_index,
+						"slide_name": slide.name,
+						"collision_pairs": slide_collisions,
+						"collision_pairs_count": len(slide_collisions),
+					}
+				)
+
+		return {
+			"message": "Shape collision check completed",
+			"presentation_id": presentation_id,
+			"slides_checked": len(pptx_object.slides),
+			"slides_with_collisions_count": len(slides_with_collisions),
+			"total_collision_pairs": total_collision_pairs,
+			"slides_with_collisions": slides_with_collisions,
+		}
