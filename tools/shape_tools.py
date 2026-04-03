@@ -184,6 +184,77 @@ def register_shape_tools(app, presentations: dict[str, PresentationFile]):
 
 	@app.tool(
 		annotations=ToolAnnotations(
+			title="Move and resize shape",
+			readOnlyHint=False,
+		),
+		description="Moves a shape and updates its size on a slide in one operation.\
+			The presentation_id, slide_id, shape_id, left, top, width, and height must be provided.\
+			Position and size values are expected in EMUs.\
+			Placeholder-first policy: prefer placeholder tools before adding shapes manually."
+	)
+	def move_and_resize_shape(
+		presentation_id: str,
+		slide_id: int,
+		shape_id: int,
+		left: int,
+		top: int,
+		width: int,
+		height: int,
+	) -> dict:
+		"""Move and resize an existing shape in one operation."""
+		if presentation_id not in presentations:
+			return {"error": "Presentation ID not found."}
+
+		presentation_file = presentations[presentation_id]
+		pptx_object = presentation_file.get_pptx_object()
+
+		slide_to_update = get_slide_by_id(pptx_object, slide_id)
+		if slide_to_update is None:
+			return {"error": "Slide ID not found."}
+
+		try:
+			shape_id_int = int(shape_id)
+			left_emu = int(left)
+			top_emu = int(top)
+			width_emu = int(width)
+			height_emu = int(height)
+		except (TypeError, ValueError):
+			return {
+				"error": "shape_id, left, top, width, and height must be numeric values."
+			}
+
+		target_shape = None
+		for shape in slide_to_update.shapes:
+			if shape.shape_id == shape_id_int:
+				target_shape = shape
+				break
+
+		if target_shape is None:
+			return {
+				"error": "Shape ID not found on this slide.",
+				"presentation_id": presentation_id,
+				"slide_id": slide_id,
+				"shape_id": shape_id_int,
+			}
+
+		shape_before = serialize_shape(target_shape)
+
+		target_shape.left = left_emu
+		target_shape.top = top_emu
+		target_shape.width = width_emu
+		target_shape.height = height_emu
+
+		return {
+			"message": "Shape moved and resized successfully",
+			"presentation_id": presentation_id,
+			"slide_id": slide_id,
+			"shape_id": target_shape.shape_id,
+			"shape_before": shape_before,
+			"shape_after": serialize_shape(target_shape),
+		}
+
+	@app.tool(
+		annotations=ToolAnnotations(
 			title="Check shape collisions",
 			readOnlyHint=True,
 		),
