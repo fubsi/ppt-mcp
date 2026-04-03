@@ -190,6 +190,7 @@ def register_file_management_tools(app: FastMCP, presentations: Dict[str, Presen
         description="Removes a presentation file from the global state and deletes the file from disk. \
         The presentation_id must be provided for this operation. \
         Use this tool to clean up temporary files created during testing or if a file is no longer needed. \
+        When you are finished, run this cleanup tool to remove temporary presentation artifacts. \
         Placeholder-first policy: when adding content to slides later, prefer placeholder tools before manual shape tools."
     )
     def cleanup_presentation_file(presentation_id: str) -> Dict:
