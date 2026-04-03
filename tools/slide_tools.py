@@ -111,17 +111,77 @@ def register_slide_tools(app, presentations: dict[str, PresentationFile]):
         presentation_file = presentations[presentation_id]
         pptx_object = presentation_file.get_pptx_object()
 
-        slide_to_remove = get_slide_by_id(pptx_object, slide_id)
+        slide_to_remove, slide_index = get_slide_with_index_by_id(pptx_object, slide_id)
 
-        if not slide_to_remove:
+        if slide_to_remove is None:
             return {"error": "Slide ID not found."}
 
-        pptx_object.slides.remove(slide_to_remove)
+        # python-pptx does not expose a public remove API for slides;
+        # remove by deleting the slide id entry and dropping its relationship.
+        slide_id_list = pptx_object.slides._sldIdLst
+        slide_id_element = slide_id_list[slide_index]
+        relationship_id = slide_id_element.rId
+        pptx_object.part.drop_rel(relationship_id)
+        del slide_id_list[slide_index]
 
         return {
             "message": "Slide removed successfully",
             "presentation_id": presentation_id,
             "removed_slide_id": slide_id
+        }
+
+    @app.tool(
+        annotations=ToolAnnotations(
+            title="Move a slide",
+            readOnlyHint=False,
+        ),
+        description="Moves a slide to a new position in a given presentation file.\
+            The presentation_id, slide_id, and target_index must be provided for this operation.\
+            Use the get_slides tool to find the correct slide_id and current ordering.\
+            target_index is zero-based and refers to the final slide order index.\
+            Placeholder-first policy: when adding content to slides, prefer placeholder tools before manual shape tools."
+    )
+    def move_slide(presentation_id: str, slide_id: int, target_index: int) -> dict:
+        """Move a slide to a new index in a presentation file."""
+        if presentation_id not in presentations:
+            return {"error": "Presentation ID not found."}
+
+        presentation_file = presentations[presentation_id]
+        pptx_object = presentation_file.get_pptx_object()
+
+        slide_to_move, current_index = get_slide_with_index_by_id(pptx_object, slide_id)
+
+        if slide_to_move is None:
+            return {"error": "Slide ID not found."}
+
+        slide_count = len(pptx_object.slides)
+        if target_index < 0 or target_index >= slide_count:
+            return {
+                "error": "Invalid target index.",
+                "target_index": target_index,
+                "valid_range": [0, slide_count - 1]
+            }
+
+        if current_index == target_index:
+            return {
+                "message": "Slide already at target index",
+                "presentation_id": presentation_id,
+                "slide_id": slide_id,
+                "from_index": current_index,
+                "to_index": target_index
+            }
+
+        slide_id_list = pptx_object.slides._sldIdLst
+        slide_id_element = slide_id_list[current_index]
+        del slide_id_list[current_index]
+        slide_id_list.insert(target_index, slide_id_element)
+
+        return {
+            "message": "Slide moved successfully",
+            "presentation_id": presentation_id,
+            "slide_id": slide_id,
+            "from_index": current_index,
+            "to_index": target_index
         }
 
     @app.tool(

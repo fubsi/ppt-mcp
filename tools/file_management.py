@@ -13,13 +13,20 @@ from mcp.types import ToolAnnotations
 from utils.models import PresentationFile
 
 
-TEMP_PATH = Path("temp_presentations")
+BASE_DIR = Path(__file__).resolve().parent.parent
+TEMP_PATH = BASE_DIR / "temp_presentations"
 TEMP_PATH.mkdir(exist_ok=True)
 
 
 
 def register_file_management_tools(app: FastMCP, presentations: Dict[str, PresentationFile], default_template_file_path: str):
     """Register simple PowerPoint file management tools."""
+
+    def _resolve_template_path(template_path_input: str) -> Path:
+        template_path = Path(template_path_input).expanduser()
+        if template_path.is_absolute():
+            return template_path
+        return (BASE_DIR / template_path).resolve()
 
     @app.tool(
         annotations=ToolAnnotations(
@@ -37,16 +44,33 @@ def register_file_management_tools(app: FastMCP, presentations: Dict[str, Presen
         file_path = TEMP_PATH / file_name
         
         # Create an empty presentation from the default template
-        template_path = Path(default_template_file_path)
+        template_path = _resolve_template_path(default_template_file_path)
         if not template_path.exists():
-            raise FileNotFoundError("Default template file not found.")
+            return {
+                "error": "Default template file not found.",
+                "template_path": str(template_path),
+            }
         
         # Copy the template to create a new presentation
         with template_path.open("rb") as src, file_path.open("wb") as dst:
             dst.write(src.read())
+
+        if not file_path.exists() or file_path.stat().st_size == 0:
+            return {
+                "error": "Failed to initialize presentation file from template.",
+                "template_path": str(template_path),
+                "target_path": str(file_path),
+            }
         
         # Load the presentation into memory and store it in the global state
-        presentations[individual_id] = PresentationFile(str(file_path))
+        try:
+            presentations[individual_id] = PresentationFile(str(file_path))
+        except Exception as e:
+            return {
+                "error": f"Failed to load presentation package: {str(e)}",
+                "template_path": str(template_path),
+                "target_path": str(file_path),
+            }
         
         return {
             "message": "Presentation file created successfully",
@@ -65,12 +89,21 @@ def register_file_management_tools(app: FastMCP, presentations: Dict[str, Presen
     )
     def open_presentation_file(file_path: str) -> Dict:
         """Open an existing presentation file."""
-        file_path = Path(file_path)
+        file_path = Path(file_path).expanduser()
+        if not file_path.is_absolute():
+            file_path = (BASE_DIR / file_path).resolve()
+
         if not file_path.exists():
             return {"error": "File not found."}
 
         individual_id = uuid4().hex[:12]
-        presentations[individual_id] = PresentationFile(str(file_path))
+        try:
+            presentations[individual_id] = PresentationFile(str(file_path))
+        except Exception as e:
+            return {
+                "error": f"Failed to open presentation package: {str(e)}",
+                "file_path": str(file_path),
+            }
         
         return {
             "message": "Presentation file opened successfully",
