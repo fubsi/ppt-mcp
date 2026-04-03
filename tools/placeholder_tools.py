@@ -2,6 +2,7 @@ from mcp.types import ToolAnnotations
 from pptx.enum.shapes import PP_PLACEHOLDER
 
 from utils.helper_methods import (
+    analyze_text_overflow_in_shape,
     get_placeholder_by_shape_id,
     get_slide_by_id,
     resolve_picture_source,
@@ -118,6 +119,7 @@ def register_placeholder_tools(app, presentations):
 
         target_placeholder.text_frame.clear()
         target_placeholder.text_frame.text = text
+        overflow_analysis = analyze_text_overflow_in_shape(target_placeholder)
 
         return {
             "message": "Text inserted into placeholder successfully",
@@ -125,6 +127,8 @@ def register_placeholder_tools(app, presentations):
             "slide_id": slide_id,
             "placeholder_shape_id": placeholder_shape_id,
             "text": target_placeholder.text_frame.text,
+            "text_overflow_detected": overflow_analysis["overflow_detected"],
+            "text_overflow_analysis": overflow_analysis,
             "placeholder_type": str(placeholder_type),
             "placeholder_type_value": int(placeholder_type),
         }

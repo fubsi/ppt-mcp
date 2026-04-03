@@ -1,6 +1,11 @@
 from mcp.types import ToolAnnotations
 
-from utils.helper_methods import get_slide_by_id, remove_shapes_by_ids, resolve_picture_source
+from utils.helper_methods import (
+	analyze_text_overflow_in_shape,
+	get_slide_by_id,
+	remove_shapes_by_ids,
+	resolve_picture_source,
+)
 from utils.models import PresentationFile
 
 
@@ -121,11 +126,14 @@ def register_shape_tools(app, presentations: dict[str, PresentationFile]):
 		)
 		new_textbox.text_frame.clear()
 		new_textbox.text_frame.text = text
+		overflow_analysis = analyze_text_overflow_in_shape(new_textbox)
 
 		return {
 			"message": "Text added to slide successfully",
 			"presentation_id": presentation_id,
 			"slide_id": slide_id,
+			"text_overflow_detected": overflow_analysis["overflow_detected"],
+			"text_overflow_analysis": overflow_analysis,
 			"shape": {
 				"shape_id": new_textbox.shape_id,
 				"name": new_textbox.name,

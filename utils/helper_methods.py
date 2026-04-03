@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import math
 from io import BytesIO
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import urlopen
+
+
+EMU_PER_POINT = 12700
+DEFAULT_FONT_SIZE_PT = 18.0
+AVG_CHAR_WIDTH_FACTOR = 0.52
+LINE_HEIGHT_FACTOR = 1.2
 
 
 def get_slide_by_id(pptx_object, slide_id: int):
@@ -190,4 +197,84 @@ def serialize_slide(slide, slide_index: int) -> dict:
 		"shapes_count": len(shapes),
 		"slide_placeholders": placeholders,
 		"slide_shapes": shapes,
+	}
+
+
+def _to_points(emu_value: int) -> float:
+	"""Convert EMU value to points."""
+	return max(0.0, float(emu_value) / EMU_PER_POINT)
+
+
+def _get_paragraph_font_size_pt(paragraph) -> float:
+	"""Resolve paragraph font size in points with sensible fallback."""
+	if paragraph.font is not None and paragraph.font.size is not None:
+		return float(paragraph.font.size.pt)
+
+	for run in paragraph.runs:
+		if run.font is not None and run.font.size is not None:
+			return float(run.font.size.pt)
+
+	return DEFAULT_FONT_SIZE_PT
+
+
+def analyze_text_overflow_in_shape(shape) -> dict:
+	"""Estimate whether text likely overflows the shape's text area."""
+	if not hasattr(shape, "text_frame") or shape.text_frame is None:
+		return {
+			"overflow_detected": False,
+			"reason": "shape_has_no_text_frame",
+		}
+
+	text_frame = shape.text_frame
+	available_width_emu = int(shape.width) - int(text_frame.margin_left) - int(text_frame.margin_right)
+	available_height_emu = int(shape.height) - int(text_frame.margin_top) - int(text_frame.margin_bottom)
+
+	if available_width_emu <= 0 or available_height_emu <= 0:
+		return {
+			"overflow_detected": True,
+			"reason": "invalid_text_area",
+			"available_width_pt": _to_points(available_width_emu),
+			"available_height_pt": _to_points(available_height_emu),
+		}
+
+	available_width_pt = _to_points(available_width_emu)
+	available_height_pt = _to_points(available_height_emu)
+	word_wrap = True if text_frame.word_wrap is None else bool(text_frame.word_wrap)
+
+	total_required_height_pt = 0.0
+	longest_estimated_line_pt = 0.0
+	horizontal_overflow_detected = False
+
+	for paragraph in text_frame.paragraphs:
+		paragraph_text = paragraph.text or ""
+		font_size_pt = _get_paragraph_font_size_pt(paragraph)
+		line_height_pt = font_size_pt * LINE_HEIGHT_FACTOR
+		chars_per_line = max(1, int(available_width_pt / (font_size_pt * AVG_CHAR_WIDTH_FACTOR)))
+
+		raw_lines = paragraph_text.splitlines() or [""]
+		for raw_line in raw_lines:
+			line_char_count = len(raw_line)
+			estimated_line_width_pt = line_char_count * font_size_pt * AVG_CHAR_WIDTH_FACTOR
+			longest_estimated_line_pt = max(longest_estimated_line_pt, estimated_line_width_pt)
+
+			if word_wrap:
+				wrapped_line_count = max(1, math.ceil(line_char_count / chars_per_line))
+				total_required_height_pt += wrapped_line_count * line_height_pt
+			else:
+				total_required_height_pt += line_height_pt
+				if estimated_line_width_pt > available_width_pt:
+					horizontal_overflow_detected = True
+
+	vertical_overflow_detected = total_required_height_pt > available_height_pt
+	overflow_detected = horizontal_overflow_detected or vertical_overflow_detected
+
+	return {
+		"overflow_detected": overflow_detected,
+		"horizontal_overflow_detected": horizontal_overflow_detected,
+		"vertical_overflow_detected": vertical_overflow_detected,
+		"word_wrap": word_wrap,
+		"available_width_pt": round(available_width_pt, 2),
+		"available_height_pt": round(available_height_pt, 2),
+		"required_height_pt_estimate": round(total_required_height_pt, 2),
+		"longest_line_width_pt_estimate": round(longest_estimated_line_pt, 2),
 	}
